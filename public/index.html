@@ -1,0 +1,2790 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Библиотеки для выгрузки -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="shortcut icon" type="image/x-icon" href="./img/favicon.ico">
+    <title>Журнал RDP подключений</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            height: calc(100vh - 80px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        /* Исправленный контейнер входа */
+        .login-container {
+            max-width: 500px;
+            width: 90%;
+            margin: 50px auto;
+            padding: 40px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+            font-size: 0.95rem;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+        
+        .login-container button[type="submit"] {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            background-color: var(--secondary-color);
+            border-radius: 8px;
+        }
+        
+        .login-container button[type="submit"]:hover {
+            background-color: #2980b9;
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .page {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-top: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--secondary-color);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .tab-content.hidden {
+            display: none;
+        }
+        
+        /* Контейнер с прокруткой для таблиц */
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-top: 20px;
+            background: white;
+            max-height: calc(100vh - 300px);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        
+        th {
+            background-color: var(--light-color);
+            font-weight: 600;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            vertical-align: middle;
+        }
+        
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: end;
+            flex-shrink: 0;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 180px;
+        }
+        
+        .filter-label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .notification {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            margin-top: 20px;
+        }
+        
+        .notification.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .notification.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .notification.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .notification.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .action-buttons {
+            text-align: center;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            display: inline-block;
+            margin: 5px 4px;
+            vertical-align: middle;
+        }
+        
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .upload-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px dashed #ddd;
+            flex-shrink: 0;
+        }
+        
+        .upload-area {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .file-input {
+            margin: 15px 0;
+        }
+        
+        .log-preview {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        /* Стили для страницы статуса обновлений */
+        .updates-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .updates-table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .update-status-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+            margin-bottom: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-completed {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status-select {
+            min-width: 150px;
+        }
+
+        .user-filter-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .user-checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-left: 10px;
+        }
+
+        .user-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .user-checkbox input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        /* Стили для матрицы обновлений */
+        .updates-matrix-container {
+            flex: 1;
+            overflow: auto;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+            max-height: calc(100vh - 400px);
+        }
+        
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #ddd;
+            min-width: 800px;
+        }
+        
+        .matrix-table th {
+            background-color: #f2f2f2;
+            font-weight: 600;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .matrix-table td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .update-name-cell {
+            background-color: #f8f9fa;
+            font-weight: 500;
+            text-align: left;
+            min-width: 200px;
+            position: sticky;
+            left: 0;
+            z-index: 15;
+            background-clip: padding-box;
+        }
+        
+        .matrix-table th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 30;
+            background-color: #f2f2f2;
+        }
+        
+        .status-cell {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .status-cell.readonly {
+            cursor: default !important;
+        }
+        
+        .status-cell:hover {
+            background-color: #f0f8ff;
+        }
+        
+        .status-cell.readonly:hover {
+            background-color: transparent !important;
+        }
+        
+        .status-ok {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-not-ok {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .dot-ok {
+            background-color: #28a745;
+        }
+        
+        .dot-not-ok {
+            background-color: #dc3545;
+        }
+        
+        .matrix-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        
+        .matrix-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+        
+        .status-legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        /* Стили для пагинации */
+        .pagination-container {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .pagination-info {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pagination-btn {
+            padding: 6px 12px;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            border: 1px solid #ddd;
+            font-size: 0.9rem;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background-color: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Стили для страницы сервисов */
+        .services-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .services-layout {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .services-sidebar-compact {
+            min-width: 200px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        .services-content {
+            flex: 1;
+            overflow: auto;
+            padding-right: 10px;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+            padding: 0.5rem 0;
+        }
+
+        .service-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            background: white;
+            padding: 1.5rem 1rem;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px -6px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.02);
+            text-decoration: none;
+            color: #0f172a;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(203, 213, 225, 0.3);
+            height: fit-content;
+        }
+
+        .service-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 30px -12px rgba(0,119,182,0.2);
+            border-color: rgba(14, 165, 233, 0.3);
+        }
+
+        .service-card img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .service-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .service-card span {
+            font-size: 1rem;
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .service-title {
+            font-weight: 500;
+            font-size: 2rem;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+            flex-shrink: 0;
+        }
+
+        .service-subtitle {
+            color: #475569;
+            margin-bottom: 0;
+            font-size: 1.125rem;
+            flex-shrink: 0;
+        }
+
+        .services-menu-item {
+            padding: 0.75rem 1rem;
+            border-radius: 14px;
+            font-weight: 500;
+            color: #334155;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 5px;
+        }
+
+        .services-menu-item i {
+            width: 20px;
+            color: #64748b;
+        }
+
+        .services-menu-item:hover {
+            background: #e9ecef;
+            color: #0f172a;
+        }
+
+        .services-menu-item.active {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .services-menu-item.active i {
+            color: #0369a1;
+        }
+
+        /* Стили для форм */
+        #addTab, #uploadTab {
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* Стили для контейнера с фильтрами */
+        .admin-controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        .filters-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            align-items: end;
+            margin-bottom: 15px;
+        }
+
+        .actions-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .export-buttons .btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+            position: relative;
+        }
+
+        /* Стили для сообщения об ошибке входа */
+        #loginError {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                min-width: 100%;
+            }
+            
+            .admin-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .user-checkbox-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .matrix-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .matrix-actions {
+                margin-left: 0;
+                width: 100%;
+                justify-content: flex-start;
+            }
+            
+            .pagination-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .pagination-controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .services-layout {
+                flex-direction: column;
+            }
+
+            .services-sidebar-compact {
+                width: 100%;
+                max-height: 150px;
+            }
+            
+            .filters-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .actions-row {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .actions-row > div {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .export-buttons {
+                width: 100%;
+                justify-content: center;
+                margin-left: 0 !important;
+            }
+            
+            .export-buttons .btn {
+                width: 100%;
+            }
+            
+            .table-container {
+                max-height: calc(100vh - 350px);
+            }
+            
+            .updates-matrix-container {
+                max-height: calc(100vh - 450px);
+            }
+            
+            .login-container {
+                width: 95%;
+                padding: 30px 20px;
+                margin: 20px auto;
+            }
+        }
+
+        /* Стили для главной страницы пользователя и админа */
+        #userPage, #adminPage {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #userPage.hidden, #adminPage.hidden {
+            display: none;
+        }
+
+        /* Стили для контейнера с записями */
+        .records-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">Журнал RDP подключений</div>
+            <div class="user-info hidden" id="userInfo">
+                <div style="text-align: right;">
+                    <div id="userName"></div>
+                    <div id="userPosition" style="font-size: 0.8rem; color: #ccc;"></div>
+                </div>
+                <button class="btn btn-danger" id="logoutBtn">Выйти</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Форма входа (исправлена) -->
+        <div id="loginPage" class="login-container">
+            <h2>Вход в систему</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Имя пользователя</label>
+                    <input type="text" id="username" placeholder="Введите имя пользователя" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль</label>
+                    <input type="password" id="password" placeholder="Введите пароль" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Войти</button>
+            </form>
+            <div class="notification error hidden" id="loginError">Неверное имя пользователя или пароль</div>
+        </div>
+
+        <!-- Панель пользователя -->
+        <div id="userPage" class="hidden">
+            <div class="tabs">
+                <div class="tab active" data-tab="add">Добавить запись</div>
+                <div class="tab" data-tab="view">Мои записи</div>
+                <div class="tab" data-tab="upload">Загрузить логи</div>
+                <div class="tab" data-tab="user-updates">Статус обновлений</div>
+                <div class="tab" data-tab="services">Сервисы</div>
+            </div>
+            
+            <div id="addTab" class="tab-content">
+                <h2>Добавить запись о подключении</h2>
+                <div class="notification success hidden" id="addSuccess">Запись успешно добавлена!</div>
+                <form id="addRecordForm">
+                    <div class="form-group">
+                        <label for="connectionDate">Дата и время подключения</label>
+                        <input type="datetime-local" id="connectionDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lpu">ЛПУ</label>
+                        <select id="lpu" required>
+                            <option value="">Загрузка ЛПУ...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="workDescription">Проводимая работа</label>
+                        <input type="text" id="workDescription" placeholder="Опишите проводимую работу" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="exitTime">Время выхода</label>
+                        <input type="datetime-local" id="exitTime">
+                    </div>
+                    <button type="submit" class="btn btn-success">Добавить запись</button>
+                    <button type="button" class="btn btn-warning hidden" id="cancelEditBtn" style="margin-left: 10px;">Отменить редактирование</button>
+                </form>
+            </div>
+            
+            <div id="viewTab" class="tab-content hidden">
+                <h2>Мои записи</h2>
+                <div class="filters">
+                    <div class="filter-group">
+                        <div class="filter-label">ЛПУ</div>
+                        <select id="userLpuFilter">
+                            <option value="">Все ЛПУ</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Дата с</div>
+                        <input type="date" id="userDateFromFilter">
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">Дата по</div>
+                        <input type="date" id="userDateToFilter">
+                    </div>
+                    <button class="btn btn-primary" id="userApplyFilters">Применить</button>
+                    <button class="btn" id="userResetFilters">Сбросить</button>
+                </div>
+                
+                <div class="table-container">
+                    <table id="userRecordsTable">
+                        <thead>
+                            <tr>
+                                <th>Дата и время подключения</th>
+                                <th>ЛПУ</th>
+                                <th>Проводимая работа</th>
+                                <th>Время выхода</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userRecordsBody">
+                            <!-- Записи будут добавляться динамически -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Пагинация для пользователя -->
+                <div id="userPagination" class="pagination-container" style="display: none;">
+                    <div class="pagination-info" id="userPaginationInfo">
+                        Показано 0-0 из 0 записей
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="btn pagination-btn" id="userPrevPage" disabled>← Предыдущая</button>
+                        <span id="userCurrentPage" style="margin: 0 15px; font-weight: 600;">Страница 1</span>
+                        <button class="btn pagination-btn" id="userNextPage" disabled>Следующая →</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="uploadTab" class="tab-content hidden">
+                <h2>Загрузить логи RDP подключений</h2>
+                
+                <div class="upload-section">
+                    <div class="upload-area">
+                        <h3>Загрузка JSON логов</h3>
+                        <p>Загрузите JSON файл, полученный с помощью PowerShell скрипта</p>
+                        
+                        <input type="file" id="logFile" accept=".json" class="file-input">
+                        <button class="btn btn-warning" id="uploadLogBtn">Загрузить и обработать логи</button>
+                        
+                        <div class="notification info hidden" id="uploadInfo">
+                            Выберите JSON файл с логами RDP подключений
+                        </div>
+                        
+                        <div class="notification success hidden" id="uploadSuccess"></div>
+                        <div class="notification error hidden" id="uploadError"></div>
+                        <div class="notification warning hidden" id="uploadWarning"></div>
+                    </div>
+                </div>
+
+                <div id="logPreview" class="hidden">
+                    <h3>Предпросмотр обработанных записей</h3>
+                    <div class="log-preview" id="logPreviewContent">
+                        <!-- Предпросмотр будет добавляться здесь -->
+                    </div>
+                    <button class="btn btn-success" id="confirmImportBtn" style="margin-top: 10px;">Подтвердить импорт</button>
+                </div>
+            </div>
+
+            <!-- Вкладка для просмотра статуса обновлений пользователями -->
+            <div id="user-updatesTab" class="tab-content hidden">
+                <div class="updates-container">
+                    <h3>Статус ручного обновления МИС</h3>
+                    
+                    <div class="notification info">
+                        Здесь отображается статус готовности обновлений для каждого сопровождающего.
+                    </div>
+                    
+                    <div class="updates-matrix-container">
+                        <table class="matrix-table" id="userUpdatesMatrix">
+                            <thead>
+                                <tr id="userMatrixHeader">
+                                    <th class="update-name-cell">Обновление</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userMatrixBody">
+                                <!-- Данные будут добавляться динамически -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Сервисы -->
+            <div id="servicesTab" class="tab-content hidden">
+                <div class="services-container">
+                    <div class="service-title">Сервисы VSD</div>
+                    <div class="service-subtitle">Удобный доступ ко всем инструментам</div>
+                    
+                    <div class="services-layout">
+                        <div class="services-sidebar-compact">
+                            <div class="services-menu-item active" data-service-category="own">
+                                <i class="fas fa-star"></i>
+                                <span>Внутренние сервисы</span>
+                            </div>
+                            <div class="services-menu-item" data-service-category="two">
+                                <i class="fa-solid fa-globe"></i>
+                                <span>Сторонние сервисы</span>
+                            </div>
+                            <div class="services-menu-item" data-service-category="third">
+                                <i class="fa-solid fa-book"></i>
+                                <span>Справочники терминологии</span>
+                            </div>
+                        </div>
+                        
+                        <div class="services-content">
+                            <div class="services-grid" id="servicesGrid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Административная панель -->
+        <div id="adminPage" class="hidden">
+            <h2>Панель администратора</h2>
+            
+            <div class="tabs">
+                <div class="tab active" data-tab="adminRecords">Все записи</div>
+                <div class="tab" data-tab="updates">Статус обновлений</div>
+                <div class="tab" data-tab="adminServices">Сервисы</div>
+            </div>
+            
+            <div id="adminRecordsTab" class="tab-content">
+                <div class="admin-stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalRecords">0</div>
+                        <div class="stat-label">Всего записей</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="todayRecords">0</div>
+                        <div class="stat-label">Записей сегодня</div>
+                    </div>
+                </div>
+
+                <div class="admin-controls">
+                    <div class="filters-row">
+                        <div class="filters">
+                            <div class="filter-group">
+                                <div class="filter-label">Пользователь</div>
+                                <select id="userFilter">
+                                    <option value="">Все пользователи</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-label">ЛПУ</div>
+                                <select id="adminLpuFilter">
+                                    <option value="">Все ЛПУ</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-label">Дата с</div>
+                                <input type="date" id="adminDateFromFilter">
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-label">Дата по</div>
+                                <input type="date" id="adminDateToFilter">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="actions-row">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="btn btn-primary" id="adminApplyFilters">Применить фильтры</button>
+                            <button class="btn" id="adminResetFilters">Сбросить все</button>
+                        </div>
+                        
+                        <div class="export-buttons" style="margin-left: auto;">
+                            <button class="btn btn-success" id="exportExcelBtn">
+                                📊 Выгрузить в Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="adminRecordsTable">
+                        <thead>
+                            <tr>
+                                <th>Дата и время подключения</th>
+                                <th>ЛПУ</th>
+                                <th>Проводимая работа</th>
+                                <th>Время выхода</th>
+                                <th>Пользователь</th>
+                                <th>Должность</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminRecordsBody">
+                            <!-- Записи будут добавляться динамически -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Пагинация для администратора -->
+                <div id="adminPagination" class="pagination-container" style="display: none;">
+                    <div class="pagination-info" id="adminPaginationInfo">
+                        Показано 0-0 из 0 записей
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="btn pagination-btn" id="adminPrevPage" disabled>← Предыдущая</button>
+                        <span id="adminCurrentPage" style="margin: 0 15px; font-weight: 600;">Страница 1</span>
+                        <button class="btn pagination-btn" id="adminNextPage" disabled>Следующая →</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="updatesTab" class="tab-content hidden">
+                <div class="updates-container">
+                    <h3>Статус ручного обновления МИС</h3>
+                    <br>
+                    <div id="adminUpdateControls" class="matrix-controls">
+                        <button class="btn btn-success" id="addUpdateBtn">+ Добавить обновление</button>
+                        
+                        <div class="matrix-actions">
+                            <button class="btn btn-warning" id="exportMatrixBtn">📊 Экспорт в Excel</button>
+                        </div>
+                    </div>
+                    
+                    <div class="updates-matrix-container">
+                        <table class="matrix-table" id="updatesMatrix">
+                            <thead>
+                                <tr id="matrixHeader">
+                                    <th class="update-name-cell">Обновление</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matrixBody">
+                                <!-- Данные будут добавляться динамически -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Административная вкладка Сервисы -->
+            <div id="adminServicesTab" class="tab-content hidden">
+                <div class="services-container">
+                    <div class="service-title">Сервисы VSD</div>
+                    <div class="service-subtitle">Удобный доступ ко всем инструментам</div>
+                    
+                    <div class="services-layout">
+                        <div class="services-sidebar-compact">
+                            <div class="services-menu-item active" data-service-category="own">
+                                <i class="fas fa-star"></i>
+                                <span>Внутренние сервисы</span>
+                            </div>
+                            <div class="services-menu-item" data-service-category="two">
+                                <i class="fa-solid fa-globe"></i>
+                                <span>Сторонние сервисы</span>
+                            </div>
+                            <div class="services-menu-item" data-service-category="third">
+                                <i class="fa-solid fa-book"></i>
+                                <span>Справочники терминологии</span>
+                            </div>
+                        </div>
+                        
+                        <div class="services-content">
+                            <div class="services-grid" id="adminServicesGrid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Font Awesome для иконок меню -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <script src="/api.js"></script>
+    <script>
+        // Текущий пользователь
+        let currentUser = null;
+        // Список ЛПУ будет загружаться из базы
+        let lpuList = [];
+        // Данные матрицы обновлений
+        let updateMatrixData = {
+            updates: [],
+            users: [],
+            statuses: {}
+        };
+        
+        // Переменные для пагинации
+        let currentUserPage = 1;
+        let currentAdminPage = 1;
+        let userPaginationData = null;
+        let adminPaginationData = null;
+
+        // Данные сервисов
+        const services = {
+            own: [
+                { name: "Сайт компании", url: "https://example.com/", img: "./img/logo_main_1024.png" },
+                { name: "Вики", url: "https://example.com/", img: "./img/MediaWiki-2020-logo.png" },
+                { name: "Клиент-контакт", url: "https://example.com/", img: "./img/Redmine_logo.png" },
+                { name: "Журнал подключений и обновлений", url: "https://example.com/", img: "./img/RDP_logo.png" },
+                { name: "Ansible Semaphore", url: "https://example.com/", img: "./img/semaphore.png" },
+                { name: "Мониторинг версий Sendedapi", url: "https://example.com/", img: "./img/sendedapi.png" },
+                { name: "Proxmox", url: "https://example.com/", img: "./img/proxmox.png" },
+                { name: "GitHub", url: "https://example.com/", img: "./img/github.png" },
+                { name: "GitLab", url: "https://example.com/", img: "./img/gitlab.png" },
+                { name: "Работа с ОДЛИ", url: "https://example.com/", img: "./img/odli.png" },
+                { name: "PixService Изменение данных пациента", url: "https://example.com/", img: "./img/pixservice.png" },
+                { name: "Проверка должности", url: "https://example.com/", img: "./img/positions.png" },
+                { name: "Патологические результаты анализов", url: "https://example.com/", img: "./img/lab_tests.png" }
+            ],
+            two: [
+                { name: "МосМедИИ", url: "https://example.com/", img: "./img/mosmedii.png" },
+                { name: "EXLAB<br>Проверка статуса заказа ОДЛИ/ОДИИ", url: "https://example.com/", img: "./img/exlab.png" },
+                { name: "Сервис терминологии", url: "https://example.com/", img: "./img/directory.png"  },
+                { name: "ИАМ РЕГИЗ", url: "https://example.com/", img: "./img/iam_regiz.png"  },
+                { name: "РЭМД", url: "https://example.com/", img: "./img/remd.png"  },
+                { name: "Генератор паролей", url: "https://www.eset.com/ua-ru/home/generator-paroley/", img: "./img/password.png"  }
+            ],
+            third: [
+                { name: "LOINC ред.СПб МИАЦ", url: "https://example.com/", img: "./img/directory.png" },
+                { name: "Код услуги заявки", url: "https://example.com/", img: "./img/directory.png" },
+                { name: "Справочник МО", url: "https://example.com/", img: "./img/directory.png"  },
+                { name: "Тип контейнера", url: "https://example.com/", img: "./img/directory.png"  },
+                { name: "Справочник лабораторных материалов и образцов", url: "https://example.com/", img: "./img/directory.png"  }
+            ]
+        };
+
+        // =========== ПРОВЕРКА АВТОРИЗАЦИИ И ЗАГРУЗКА ДАННЫХ ===========
+
+        async function checkAuth() {
+            try {
+                const userData = localStorage.getItem('currentUser');
+                if (userData) {
+                    currentUser = JSON.parse(userData);
+                    await loadLpuList();
+                    await showUserInterface(currentUser);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Ошибка проверки авторизации:', error);
+                return false;
+            }
+        }
+
+        async function loadLpuList() {
+            try {
+                const lpuListData = await apiService.getLpuList();
+                lpuList = lpuListData;
+                updateLpuSelect();
+            } catch (error) {
+                console.error('Ошибка загрузки списка ЛПУ:', error);
+                lpuList = [];
+                updateLpuSelect();
+            }
+        }
+
+        function updateLpuSelect() {
+            const lpuSelect = document.getElementById('lpu');
+            const currentValue = lpuSelect.value;
+            
+            lpuSelect.innerHTML = '<option value="">Выберите ЛПУ</option>';
+            
+            if (lpuList.length === 0) {
+                lpuSelect.innerHTML = '<option value="">Нет доступных ЛПУ</option>';
+                return;
+            }
+            
+            const sortedLpuList = [...lpuList].sort();
+            
+            sortedLpuList.forEach(lpu => {
+                const option = document.createElement('option');
+                option.value = lpu;
+                option.textContent = lpu;
+                lpuSelect.appendChild(option);
+            });
+            
+            if (currentValue && sortedLpuList.includes(currentValue)) {
+                lpuSelect.value = currentValue;
+            }
+        }
+
+        async function showUserInterface(user) {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('userInfo').classList.remove('hidden');
+            document.getElementById('userName').textContent = user.username;
+            
+            const userPositionElement = document.getElementById('userPosition');
+            if (user.position && user.position.trim() !== '') {
+                userPositionElement.textContent = user.position;
+                userPositionElement.style.display = 'block';
+            } else {
+                userPositionElement.style.display = 'none';
+            }
+            
+            await loadLpuList();
+            
+            if (user.role === 'admin') {
+                document.getElementById('adminPage').classList.remove('hidden');
+                document.getElementById('userPage').classList.add('hidden');
+                await loadAdminRecords(1);
+                await populateAdminFilters();
+                await updateAdminStats();
+                await loadUpdateMatrix();
+            } else {
+                document.getElementById('userPage').classList.remove('hidden');
+                document.getElementById('adminPage').classList.add('hidden');
+                await loadUserRecords(1);
+                populateUserFilters();
+                setTimeout(() => loadUserUpdateMatrix(), 500);
+            }
+        }
+
+        async function updateAdminStats() {
+            try {
+                const stats = await apiService.getStats();
+                document.getElementById('totalRecords').textContent = stats.totalRecords || 0;
+                document.getElementById('todayRecords').textContent = stats.todayRecords || 0;
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+                showNotification('addSuccess', 'Ошибка загрузки статистики', 'error');
+            }
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ РАБОТЫ С ЗАПИСЯМИ ===========
+
+        async function loadUserRecords(page = 1) {
+            try {
+                const response = await apiService.getRecords(currentUser.id, currentUser.role, page, 100);
+                const records = response.records || [];
+                const pagination = response.pagination || { currentPage: 1, totalPages: 1, totalRecords: 0 };
+                
+                userPaginationData = pagination;
+                currentUserPage = pagination.currentPage;
+                
+                displayUserRecords(records);
+                updateUserPagination();
+            } catch (error) {
+                console.error('Ошибка загрузки записей:', error);
+                showNotification('addSuccess', 'Ошибка загрузки записей', 'error');
+            }
+        }
+
+        function displayUserRecords(records) {
+            const tbody = document.getElementById('userRecordsBody');
+            tbody.innerHTML = '';
+            
+            if (records.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="5" style="text-align: center;">Нет записей</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDateTime(record.connection_date)}</td>
+                    <td>${record.lpu}</td>
+                    <td>${record.work_description}</td>
+                    <td>${record.exit_time ? formatDateTime(record.exit_time) : 'Не указано'}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-primary edit-record" data-id="${record.id}">Редактировать</button>
+                        <button class="btn btn-danger delete-record" data-id="${record.id}">Удалить</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            addRecordEventListeners();
+        }
+
+        async function loadAdminRecords(page = 1) {
+            try {
+                const response = await apiService.getRecords(currentUser.id, currentUser.role, page, 100);
+                const records = response.records || [];
+                const pagination = response.pagination || { currentPage: 1, totalPages: 1, totalRecords: 0 };
+                
+                adminPaginationData = pagination;
+                currentAdminPage = pagination.currentPage;
+                
+                displayAdminRecords(records);
+                updateAdminPagination();
+            } catch (error) {
+                console.error('Ошибка загрузки записей:', error);
+                showNotification('addSuccess', 'Ошибка загрузки записей', 'error');
+            }
+        }
+
+        function displayAdminRecords(records) {
+            const tbody = document.getElementById('adminRecordsBody');
+            tbody.innerHTML = '';
+            
+            if (records.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="7" style="text-align: center;">Нет записей</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDateTime(record.connection_date)}</td>
+                    <td>${record.lpu}</td>
+                    <td>${record.work_description}</td>
+                    <td>${record.exit_time ? formatDateTime(record.exit_time) : 'Не указано'}</td>
+                    <td>${record.username}</td>
+                    <td>${record.position || '-'}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-danger delete-record-admin" data-id="${record.id}">Удалить</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.querySelectorAll('.delete-record-admin').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const recordId = this.getAttribute('data-id');
+                    if (confirm('Вы уверены, что хотите удалить эту запись?')) {
+                        try {
+                            await apiService.deleteRecord(recordId);
+                            await loadAdminRecords(currentAdminPage);
+                            await updateAdminStats();
+                            await populateAdminFilters();
+                            showNotification('addSuccess', 'Запись успешно удалена!', 'success');
+                        } catch (error) {
+                            console.error('Ошибка удаления:', error);
+                            showNotification('addSuccess', 'Ошибка удаления записи', 'error');
+                        }
+                    }
+                });
+            });
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ РЕДАКТИРОВАНИЯ ЗАПИСЕЙ ===========
+
+        async function loadRecordForEditing(recordId) {
+            try {
+                const response = await apiService.getRecords(currentUser.id, currentUser.role);
+                const recordsData = response.records || response;
+                const record = recordsData.find(r => r.id == recordId);
+                
+                if (record) {
+                    document.getElementById('connectionDate').value = formatDateTimeForInput(record.connection_date);
+                    document.getElementById('lpu').value = record.lpu;
+                    document.getElementById('workDescription').value = record.work_description;
+                    
+                    if (record.exit_time) {
+                        document.getElementById('exitTime').value = formatDateTimeForInput(record.exit_time);
+                    } else {
+                        document.getElementById('exitTime').value = '';
+                    }
+                    
+                    document.getElementById('addRecordForm').setAttribute('data-edit-id', recordId);
+                    document.getElementById('addRecordForm').querySelector('button[type="submit"]').textContent = 'Обновить запись';
+                    
+                    document.getElementById('cancelEditBtn').classList.remove('hidden');
+                    
+                    showNotification('addSuccess', 'Режим редактирования. Измените данные и нажмите "Обновить запись"', 'info');
+                } else {
+                    showNotification('addSuccess', 'Запись не найдена', 'error');
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки записи для редактирования:', error);
+                showNotification('addSuccess', 'Ошибка загрузки данных записи', 'error');
+            }
+        }
+
+        function formatDateTimeForInput(dateTimeString) {
+            if (!dateTimeString) return '';
+            const date = new Date(dateTimeString);
+            
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        function editRecord(recordId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector('[data-tab="add"]').classList.add('active');
+            document.getElementById('addTab').classList.remove('hidden');
+            document.getElementById('viewTab').classList.add('hidden');
+            
+            loadRecordForEditing(recordId);
+        }
+
+        function addRecordEventListeners() {
+            document.querySelectorAll('.edit-record').forEach(button => {
+                button.addEventListener('click', function() {
+                    const recordId = this.getAttribute('data-id');
+                    editRecord(recordId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-record').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const recordId = this.getAttribute('data-id');
+                    if (confirm('Вы уверены, что хотите удалить эту запись?')) {
+                        try {
+                            await apiService.deleteRecord(recordId);
+                            await loadUserRecords(currentUserPage);
+                            showNotification('addSuccess', 'Запись успешно удалена!', 'success');
+                        } catch (error) {
+                            console.error('Ошибка удаления:', error);
+                            showNotification('addSuccess', 'Ошибка удаления записи', 'error');
+                        }
+                    }
+                });
+            });
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ ОБРАБОТКИ ЛОГОВ ===========
+
+        async function processLogData(jsonData) {
+            try {
+                if (!jsonData || jsonData.trim() === '') {
+                    throw new Error('Файл пустой или содержит недопустимые данные');
+                }
+
+                const parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+                
+                if (!parsedData) {
+                    throw new Error('Неверный формат JSON данных');
+                }
+
+                const newRecords = [];
+                
+                let sessions = [];
+                
+                if (Array.isArray(parsedData.Sessions)) {
+                    sessions = parsedData.Sessions;
+                } else if (parsedData.Sessions && typeof parsedData.Sessions === 'object') {
+                    sessions = [parsedData.Sessions];
+                } else {
+                    console.warn('Структура Sessions не найдена или не распознана');
+                    return [];
+                }
+                
+                const activityIds = [];
+                sessions.forEach(session => {
+                    if (session.ActivityID) {
+                        activityIds.push(session.ActivityID);
+                    }
+                });
+                
+                const existingActivityIds = await apiService.checkExistingSessions(activityIds);
+                const existingIdsSet = new Set(existingActivityIds);
+                
+                for (const session of sessions) {
+                    const connection = session.Connection;
+                    const disconnection = session.Disconnection;
+                    const sessionInfo = session.SessionInfo;
+                    
+                    if (connection) {
+                        const activityId = session.ActivityID;
+                        
+                        if (activityId && existingIdsSet.has(activityId)) {
+                            console.log(`Пропущена сессия с ActivityID: ${activityId} - уже существует в базе`);
+                            continue;
+                        }
+                        
+                        let connectionTime = connection.Time ? new Date(connection.Time) : new Date();
+                        let exitTime = disconnection && disconnection.Time ? new Date(disconnection.Time) : null;
+                        
+                        let serverAddress = null;
+                        if (connection.Data) {
+                            serverAddress = connection.Data.Value || 
+                                           connection.Data.Server ||
+                                           connection.Data.Address ||
+                                           connection.Data.ServerAddress ||
+                                           connection.Data.IpAddress ||
+                                           connection.Data.IPAddress;
+                        }
+                        
+                        if (!serverAddress && sessionInfo && sessionInfo.Server) {
+                            serverAddress = sessionInfo.Server;
+                        }
+                        
+                        let lpu = 'Неизвестно';
+                        if (serverAddress) {
+                            try {
+                                const lpuResult = await apiService.getLpuByIp(serverAddress);
+                                lpu = lpuResult.success ? lpuResult.lpu : `Сервер: ${serverAddress}`;
+                            } catch (error) {
+                                console.warn('Ошибка получения ЛПУ из базы:', error);
+                                lpu = `Сервер: ${serverAddress}`;
+                            }
+                        } else {
+                            lpu = 'Неизвестно (адрес сервера не найден)';
+                        }
+                        
+                        let workDescription = `Исполнение работ по контракту по сопровождению МИС`;
+                        
+                        const record = {
+                            connectionDate: connectionTime.toISOString(),
+                            lpu: lpu,
+                            workDescription: workDescription,
+                            exitTime: exitTime ? exitTime.toISOString() : null,
+                            userId: currentUser.id,
+                            source: 'log_import',
+                            sessionId: activityId,
+                            connectionEventId: connection.EventRecordID,
+                            disconnectionEventId: disconnection ? disconnection.EventRecordID : null,
+                            originalServer: serverAddress,
+                            duration: sessionInfo ? sessionInfo.Duration : null,
+                            status: sessionInfo ? sessionInfo.Status : 'Unknown'
+                        };
+                        
+                        newRecords.push(record);
+                    }
+                }
+                
+                console.log(`Обработано сессий: ${sessions.length}, новых записей: ${newRecords.length}`);
+                return newRecords;
+            } catch (error) {
+                console.error('Ошибка обработки логов:', error);
+                throw new Error('Неверный формат JSON данных: ' + error.message);
+            }
+        }
+
+        function showLogPreview(records) {
+            const previewContent = document.getElementById('logPreviewContent');
+            previewContent.innerHTML = '';
+            
+            if (records.length === 0) {
+                previewContent.textContent = 'Нет новых RDP сессий для импорта (все сессии уже существуют в системе)';
+                return;
+            }
+            
+            records.forEach((record, index) => {
+                const recordDiv = document.createElement('div');
+                recordDiv.style.marginBottom = '10px';
+                recordDiv.style.padding = '5px';
+                recordDiv.style.borderBottom = '1px solid #555';
+                recordDiv.innerHTML = `
+                    <div><strong>Запись ${index + 1}:</strong></div>
+                    <div><strong>Подключение:</strong> ${formatDateTime(record.connectionDate)}</div>
+                    <div><strong>Отключение:</strong> ${record.exitTime ? formatDateTime(record.exitTime) : 'Не завершено'}</div>
+                    <div><strong>ЛПУ:</strong> ${record.lpu}</div>
+                    <div><strong>Описание:</strong> ${record.workDescription}</div>
+                    <div><strong>Сервер/IP:</strong> ${record.originalServer || 'Не найден'}</div>
+                    <div><strong>ActivityID:</strong> ${record.sessionId || 'Не указан'}</div>
+                    ${record.duration ? `<div><strong>Длительность:</strong> ${record.duration}</div>` : ''}
+                    <div><strong>Статус:</strong> ${record.status === 'Completed' ? 'Завершена' : record.status === 'Active' ? 'Активна' : 'Неизвестно'}</div>
+                    <div><strong>Connection Event ID:</strong> ${record.connectionEventId || 'Не указан'}</div>
+                `;
+                previewContent.appendChild(recordDiv);
+            });
+            
+            document.getElementById('logPreview').classList.remove('hidden');
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ ФИЛЬТРОВ ===========
+
+        function populateUserFilters() {
+            const lpuFilter = document.getElementById('userLpuFilter');
+            lpuFilter.innerHTML = '<option value="">Все ЛПУ</option>';
+            
+            if (lpuList.length === 0) return;
+            
+            const sortedLpuList = [...lpuList].sort();
+            sortedLpuList.forEach(lpu => {
+                const option = document.createElement('option');
+                option.value = lpu;
+                option.textContent = lpu;
+                lpuFilter.appendChild(option);
+            });
+        }
+
+        async function populateAdminFilters() {
+            const userFilter = document.getElementById('userFilter');
+            const lpuFilter = document.getElementById('adminLpuFilter');
+            
+            try {
+                const response = await fetch(`${apiService.baseUrl}/api/records?userId=${encodeURIComponent(currentUser.id)}&userRole=${encodeURIComponent(currentUser.role)}&limit=10000`);
+                const data = await response.json();
+                const records = data.records || [];
+                
+                const allUsers = [...new Set(records.map(record => record.username))].filter(user => user && user.trim() !== '');
+                
+                userFilter.innerHTML = '<option value="">Все пользователи</option>';
+                allUsers.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user;
+                    option.textContent = user;
+                    userFilter.appendChild(option);
+                });
+                
+                lpuFilter.innerHTML = '<option value="">Все ЛПУ</option>';
+                
+                let availableLpus = [];
+                
+                if (lpuList && lpuList.length > 0) {
+                    availableLpus = lpuList;
+                } else {
+                    availableLpus = [...new Set(records.map(record => record.lpu))]
+                        .filter(lpu => lpu && lpu.trim() !== '' && lpu !== 'Неизвестно' && lpu !== 'Сервер: null');
+                }
+                
+                if (availableLpus.length > 0) {
+                    const sortedLpuList = [...availableLpus].sort();
+                    sortedLpuList.forEach(lpu => {
+                        const option = document.createElement('option');
+                        option.value = lpu;
+                        option.textContent = lpu;
+                        lpuFilter.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Нет доступных ЛПУ';
+                    lpuFilter.appendChild(option);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка загрузки данных для фильтров:', error);
+                userFilter.innerHTML = '<option value="">Все пользователи</option>';
+                lpuFilter.innerHTML = '<option value="">Все ЛПУ</option>';
+                
+                const errorOption = document.createElement('option');
+                errorOption.value = '';
+                errorOption.textContent = 'Ошибка загрузки';
+                lpuFilter.appendChild(errorOption);
+            }
+        }
+
+        async function applyAdminFilters() {
+            try {
+                const userFilter = document.getElementById('userFilter').value;
+                const lpuFilter = document.getElementById('adminLpuFilter').value;
+                const dateFrom = document.getElementById('adminDateFromFilter').value;
+                const dateTo = document.getElementById('adminDateToFilter').value;
+                
+                const response = await fetch(`${apiService.baseUrl}/api/records?userId=${encodeURIComponent(currentUser.id)}&userRole=${encodeURIComponent(currentUser.role)}&limit=10000`);
+                const data = await response.json();
+                let records = data.records || [];
+                
+                if (userFilter) {
+                    records = records.filter(record => record.username === userFilter);
+                }
+                
+                if (lpuFilter) {
+                    records = records.filter(record => record.lpu === lpuFilter);
+                }
+                
+                if (dateFrom) {
+                    records = records.filter(record => new Date(record.connection_date) >= new Date(dateFrom));
+                }
+                
+                if (dateTo) {
+                    const endDate = new Date(dateTo);
+                    endDate.setDate(endDate.getDate() + 1);
+                    records = records.filter(record => new Date(record.connection_date) < endDate);
+                }
+                
+                displayAdminRecords(records.slice(0, 100));
+                
+                adminPaginationData = {
+                    currentPage: 1,
+                    limit: 100,
+                    totalRecords: records.length,
+                    totalPages: Math.ceil(records.length / 100)
+                };
+                updateAdminPagination();
+            } catch (error) {
+                console.error('Ошибка применения фильтров:', error);
+                showNotification('addSuccess', 'Ошибка применения фильтров', 'error');
+            }
+        }
+
+        async function applyUserFilters() {
+            try {
+                const lpuFilter = document.getElementById('userLpuFilter').value;
+                const dateFrom = document.getElementById('userDateFromFilter').value;
+                const dateTo = document.getElementById('userDateToFilter').value;
+                
+                const response = await fetch(`${apiService.baseUrl}/api/records?userId=${encodeURIComponent(currentUser.id)}&userRole=${encodeURIComponent(currentUser.role)}&limit=10000`);
+                const data = await response.json();
+                let records = data.records || [];
+                
+                if (lpuFilter) {
+                    records = records.filter(record => record.lpu === lpuFilter);
+                }
+                
+                if (dateFrom) {
+                    records = records.filter(record => new Date(record.connection_date) >= new Date(dateFrom));
+                }
+                
+                if (dateTo) {
+                    const endDate = new Date(dateTo);
+                    endDate.setDate(endDate.getDate() + 1);
+                    records = records.filter(record => new Date(record.connection_date) < endDate);
+                }
+                
+                displayUserRecords(records.slice(0, 100));
+                
+                userPaginationData = {
+                    currentPage: 1,
+                    limit: 100,
+                    totalRecords: records.length,
+                    totalPages: Math.ceil(records.length / 100)
+                };
+                updateUserPagination();
+            } catch (error) {
+                console.error('Ошибка применения фильтров:', error);
+                showNotification('addSuccess', 'Ошибка применения фильтров', 'error');
+            }
+        }
+
+        async function resetUserFilters() {
+            document.getElementById('userLpuFilter').value = '';
+            document.getElementById('userDateFromFilter').value = '';
+            document.getElementById('userDateToFilter').value = '';
+            await loadUserRecords(1);
+        }
+
+        async function resetAdminFilters() {
+            document.getElementById('userFilter').value = '';
+            document.getElementById('adminLpuFilter').value = '';
+            document.getElementById('adminDateFromFilter').value = '';
+            document.getElementById('adminDateToFilter').value = '';
+            await loadAdminRecords(1);
+            await populateAdminFilters();
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ ФОРМАТИРОВАНИЯ И УВЕДОМЛЕНИЙ ===========
+
+        function formatDateTime(dateTimeString) {
+            if (!dateTimeString) return 'Не указано';
+            const date = new Date(dateTimeString);
+            return date.toLocaleString('ru-RU');
+        }
+
+        function showNotification(elementId, message, type = 'success') {
+            const notification = document.getElementById(elementId);
+            
+            if (!notification) {
+                console.error(`Элемент с id "${elementId}" не найден`);
+                const tempNotification = document.createElement('div');
+                tempNotification.className = `notification ${type}`;
+                tempNotification.style.position = 'fixed';
+                tempNotification.style.top = '20px';
+                tempNotification.style.right = '20px';
+                tempNotification.style.zIndex = '1000';
+                tempNotification.style.padding = '10px 15px';
+                tempNotification.style.borderRadius = '4px';
+                tempNotification.style.color = type === 'error' ? '#721c24' : 
+                                             type === 'warning' ? '#856404' : 
+                                             type === 'info' ? '#0c5460' : '#155724';
+                tempNotification.style.backgroundColor = type === 'error' ? '#f8d7da' : 
+                                                       type === 'warning' ? '#fff3cd' : 
+                                                       type === 'info' ? '#d1ecf1' : '#d4edda';
+                tempNotification.style.border = type === 'error' ? '1px solid #f5c6cb' : 
+                                              type === 'warning' ? '1px solid #ffeaa7' : 
+                                              type === 'info' ? '1px solid #bee5eb' : '1px solid #c3e6cb';
+                tempNotification.textContent = message;
+                document.body.appendChild(tempNotification);
+                
+                setTimeout(() => {
+                    tempNotification.remove();
+                }, 5000);
+                return;
+            }
+            
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.remove('hidden');
+            
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 5000);
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ ПАГИНАЦИИ ===========
+
+        function updateUserPagination() {
+            const paginationContainer = document.getElementById('userPagination');
+            if (!paginationContainer) return;
+            
+            if (!userPaginationData || userPaginationData.totalRecords === 0) {
+                paginationContainer.style.display = 'none';
+                return;
+            }
+            
+            paginationContainer.style.display = 'flex';
+            
+            const startRecord = ((userPaginationData.currentPage - 1) * userPaginationData.limit) + 1;
+            const endRecord = Math.min(userPaginationData.currentPage * userPaginationData.limit, userPaginationData.totalRecords);
+            
+            document.getElementById('userPaginationInfo').textContent = 
+                `Показано ${startRecord}-${endRecord} из ${userPaginationData.totalRecords} записей`;
+            document.getElementById('userCurrentPage').textContent = `Страница ${userPaginationData.currentPage}`;
+            
+            const prevBtn = document.getElementById('userPrevPage');
+            const nextBtn = document.getElementById('userNextPage');
+            
+            prevBtn.disabled = userPaginationData.currentPage <= 1;
+            nextBtn.disabled = userPaginationData.currentPage >= userPaginationData.totalPages;
+        }
+
+        function updateAdminPagination() {
+            const paginationContainer = document.getElementById('adminPagination');
+            if (!paginationContainer) return;
+            
+            if (!adminPaginationData || adminPaginationData.totalRecords === 0) {
+                paginationContainer.style.display = 'none';
+                return;
+            }
+            
+            paginationContainer.style.display = 'flex';
+            
+            const startRecord = ((adminPaginationData.currentPage - 1) * adminPaginationData.limit) + 1;
+            const endRecord = Math.min(adminPaginationData.currentPage * adminPaginationData.limit, adminPaginationData.totalRecords);
+            
+            document.getElementById('adminPaginationInfo').textContent = 
+                `Показано ${startRecord}-${endRecord} из ${adminPaginationData.totalRecords} записей`;
+            document.getElementById('adminCurrentPage').textContent = `Страница ${adminPaginationData.currentPage}`;
+            
+            const prevBtn = document.getElementById('adminPrevPage');
+            const nextBtn = document.getElementById('adminNextPage');
+            
+            prevBtn.disabled = adminPaginationData.currentPage <= 1;
+            nextBtn.disabled = adminPaginationData.currentPage >= adminPaginationData.totalPages;
+        }
+
+        async function goToUserPrevPage() {
+            if (userPaginationData && userPaginationData.currentPage > 1) {
+                await loadUserRecords(userPaginationData.currentPage - 1);
+            }
+        }
+
+        async function goToUserNextPage() {
+            if (userPaginationData && userPaginationData.currentPage < userPaginationData.totalPages) {
+                await loadUserRecords(userPaginationData.currentPage + 1);
+            }
+        }
+
+        async function goToAdminPrevPage() {
+            if (adminPaginationData && adminPaginationData.currentPage > 1) {
+                await loadAdminRecords(adminPaginationData.currentPage - 1);
+            }
+        }
+
+        async function goToAdminNextPage() {
+            if (adminPaginationData && adminPaginationData.currentPage < adminPaginationData.totalPages) {
+                await loadAdminRecords(adminPaginationData.currentPage + 1);
+            }
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ ЭКСПОРТА ===========
+
+        async function exportToExcel() {
+            try {
+                let records;
+                const response = await fetch(`${apiService.baseUrl}/api/records?userId=${encodeURIComponent(currentUser.id)}&userRole=${encodeURIComponent(currentUser.role)}&limit=10000`);
+                const data = await response.json();
+                records = data.records || [];
+                
+                if (currentUser.role === 'admin') {
+                    const userFilter = document.getElementById('userFilter').value;
+                    const lpuFilter = document.getElementById('adminLpuFilter').value;
+                    const dateFrom = document.getElementById('adminDateFromFilter').value;
+                    const dateTo = document.getElementById('adminDateToFilter').value;
+                    
+                    if (userFilter) {
+                        records = records.filter(record => record.username === userFilter);
+                    }
+                    
+                    if (lpuFilter) {
+                        records = records.filter(record => record.lpu === lpuFilter);
+                    }
+                    
+                    if (dateFrom) {
+                        records = records.filter(record => new Date(record.connection_date) >= new Date(dateFrom));
+                    }
+                    
+                    if (dateTo) {
+                        const endDate = new Date(dateTo);
+                        endDate.setDate(endDate.getDate() + 1);
+                        records = records.filter(record => new Date(record.connection_date) < endDate);
+                    }
+                } else {
+                    const lpuFilter = document.getElementById('userLpuFilter').value;
+                    const dateFrom = document.getElementById('userDateFromFilter').value;
+                    const dateTo = document.getElementById('userDateToFilter').value;
+                    
+                    if (lpuFilter) {
+                        records = records.filter(record => record.lpu === lpuFilter);
+                    }
+                    
+                    if (dateFrom) {
+                        records = records.filter(record => new Date(record.connection_date) >= new Date(dateFrom));
+                    }
+                    
+                    if (dateTo) {
+                        const endDate = new Date(dateTo);
+                        endDate.setDate(endDate.getDate() + 1);
+                        records = records.filter(record => new Date(record.connection_date) < endDate);
+                    }
+                }
+                
+                const wb = XLSX.utils.book_new();
+                const excelData = records.map(record => ({
+                    'Дата и время подключения': formatDateTime(record.connection_date),
+                    'ЛПУ': record.lpu,
+                    'Проводимая работа': record.work_description,
+                    'Время выхода': record.exit_time ? formatDateTime(record.exit_time) : 'Не указано',
+                    'Пользователь': record.username || currentUser.username
+                }));
+                
+                const ws = XLSX.utils.json_to_sheet(excelData);
+                XLSX.utils.book_append_sheet(wb, ws, 'RDP подключения');
+                
+                const currentDate = new Date().toISOString().split('T')[0];
+                const fileName = `rdp_connections_${currentDate}.xlsx`;
+                
+                XLSX.writeFile(wb, fileName);
+                
+                showNotification('addSuccess', 'Данные успешно выгружены в Excel!', 'success');
+            } catch (error) {
+                console.error('Ошибка выгрузки в Excel:', error);
+                showNotification('addSuccess', 'Ошибка выгрузки в Excel', 'error');
+            }
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ МАТРИЦЫ ОБНОВЛЕНИЙ ===========
+
+        async function loadUpdateMatrix() {
+            try {
+                const matrixData = await apiService.getUpdateMatrix();
+                updateMatrixData = matrixData;
+                displayUpdateMatrix();
+            } catch (error) {
+                console.error('Ошибка загрузки матрицы обновлений:', error);
+                if (!updateMatrixData.updates || updateMatrixData.updates.length === 0) {
+                    createInitialMatrixData();
+                    displayUpdateMatrix();
+                }
+                showNotification('addSuccess', 'Ошибка загрузки матрицы обновлений', 'error');
+            }
+        }
+
+        async function loadUserUpdateMatrix() {
+            try {
+                const matrixData = await apiService.getUpdateMatrix();
+                matrixData.isAdmin = currentUser.role === 'admin';
+                matrixData.canEdit = currentUser.role === 'admin';
+                displayUserUpdateMatrix(matrixData);
+            } catch (error) {
+                console.error('Ошибка загрузки матрицы обновлений:', error);
+                if (!updateMatrixData.updates || updateMatrixData.updates.length === 0) {
+                    createInitialMatrixData();
+                }
+                updateMatrixData.isAdmin = currentUser.role === 'admin';
+                updateMatrixData.canEdit = currentUser.role === 'admin';
+                displayUserUpdateMatrix(updateMatrixData);
+                showNotification('addSuccess', 'Ошибка загрузки матрицы обновлений', 'error');
+            }
+        }
+
+        function createInitialMatrixData() {
+            const initialUsers = ['Тестов', 'Тестов_2', 'Тестов_3', 'Тестов_4', 'Тестов_5', 'Тестов_6'];
+            const initialUpdates = [];
+            
+            updateMatrixData = {
+                updates: initialUpdates,
+                users: initialUsers,
+                statuses: {},
+                isAdmin: currentUser ? currentUser.role === 'admin' : false,
+                canEdit: currentUser ? currentUser.role === 'admin' : false
+            };
+        }
+
+        function displayUpdateMatrix() {
+            const matrixHeader = document.getElementById('matrixHeader');
+            const matrixBody = document.getElementById('matrixBody');
+            
+            matrixHeader.innerHTML = '<th class="update-name-cell">Обновление</th>';
+            matrixBody.innerHTML = '';
+            
+            updateMatrixData.users.forEach(user => {
+                const th = document.createElement('th');
+                th.textContent = user;
+                th.style.textAlign = 'center';
+                matrixHeader.appendChild(th);
+            });
+            
+            updateMatrixData.updates.forEach(update => {
+                const row = document.createElement('tr');
+                
+                const updateCell = document.createElement('td');
+                updateCell.className = 'update-name-cell';
+                updateCell.textContent = update;
+                
+                if (currentUser.role === 'admin') {
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.style.marginTop = '5px';
+                    actionsDiv.style.display = 'flex';
+                    actionsDiv.style.gap = '5px';
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn btn-primary btn-sm';
+                    editBtn.textContent = '✏️';
+                    editBtn.title = 'Редактировать';
+                    editBtn.style.padding = '2px 6px';
+                    editBtn.style.fontSize = '12px';
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        editUpdateName(update);
+                    });
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-danger btn-sm';
+                    deleteBtn.textContent = '🗑️';
+                    deleteBtn.title = 'Удалить';
+                    deleteBtn.style.padding = '2px 6px';
+                    deleteBtn.style.fontSize = '12px';
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteUpdate(update);
+                    });
+                    
+                    actionsDiv.appendChild(editBtn);
+                    actionsDiv.appendChild(deleteBtn);
+                    updateCell.appendChild(actionsDiv);
+                }
+                
+                row.appendChild(updateCell);
+                
+                updateMatrixData.users.forEach(user => {
+                    const statusCell = document.createElement('td');
+                    statusCell.className = 'status-cell';
+                    statusCell.dataset.update = update;
+                    statusCell.dataset.user = user;
+                    
+                    const status = updateMatrixData.statuses[update]?.[user] || 'not-ok';
+                    updateStatusCell(statusCell, status);
+                    
+                    if (currentUser.role === 'admin') {
+                        statusCell.addEventListener('click', () => {
+                            toggleStatus(statusCell);
+                        });
+                    }
+                    
+                    row.appendChild(statusCell);
+                });
+                
+                matrixBody.appendChild(row);
+            });
+        }
+
+        function displayUserUpdateMatrix(matrixData) {
+            const matrixHeader = document.getElementById('userMatrixHeader');
+            const matrixBody = document.getElementById('userMatrixBody');
+            
+            matrixHeader.innerHTML = '<th class="update-name-cell">Обновление</th>';
+            matrixBody.innerHTML = '';
+            
+            if (!matrixData.updates || matrixData.updates.length === 0) {
+                matrixBody.innerHTML = `
+                    <tr>
+                        <td colspan="${matrixData.users.length + 1}" style="text-align: center; padding: 40px;">
+                            Нет данных об обновлениях. Обратитесь к администратору.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            matrixData.users.forEach(user => {
+                const th = document.createElement('th');
+                th.textContent = user;
+                th.style.textAlign = 'center';
+                matrixHeader.appendChild(th);
+            });
+            
+            matrixData.updates.forEach(update => {
+                const row = document.createElement('tr');
+                
+                const updateCell = document.createElement('td');
+                updateCell.className = 'update-name-cell';
+                updateCell.textContent = update;
+                row.appendChild(updateCell);
+                
+                matrixData.users.forEach(user => {
+                    const statusCell = document.createElement('td');
+                    statusCell.className = 'status-cell readonly';
+                    
+                    const status = matrixData.statuses[update]?.[user] || 'not-ok';
+                    updateStatusCell(statusCell, status);
+                    
+                    row.appendChild(statusCell);
+                });
+                
+                matrixBody.appendChild(row);
+            });
+        }
+
+        function updateStatusCell(cell, status) {
+            const statusMap = {
+                'ok': { class: 'status-ok', text: 'Готово', dot: 'dot-ok' },
+                'not-ok': { class: 'status-not-ok', text: 'Не готово', dot: 'dot-not-ok' }
+            };
+            
+            const statusInfo = statusMap[status] || statusMap['not-ok'];
+            
+            cell.className = cell.className.includes('readonly') 
+                ? `status-cell readonly ${statusInfo.class}` 
+                : `status-cell ${statusInfo.class}`;
+            
+            cell.innerHTML = `
+                <span class="status-dot ${statusInfo.dot}"></span>
+                <span>${statusInfo.text}</span>
+            `;
+            
+            cell.dataset.status = status;
+        }
+
+        function toggleStatus(cell) {
+            if (currentUser.role !== 'admin') {
+                showNotification('addSuccess', 'Только администратор может изменять статусы', 'warning');
+                return;
+            }
+            
+            const currentStatus = cell.dataset.status || 'not-ok';
+            const nextStatus = currentStatus === 'ok' ? 'not-ok' : 'ok';
+            
+            updateStatusCell(cell, nextStatus);
+            
+            const update = cell.dataset.update;
+            const user = cell.dataset.user;
+            
+            if (!updateMatrixData.statuses[update]) {
+                updateMatrixData.statuses[update] = {};
+            }
+            updateMatrixData.statuses[update][user] = nextStatus;
+            
+            saveMatrixChanges();
+        }
+
+        async function saveMatrixChanges() {
+            try {
+                await apiService.saveUpdateMatrix(updateMatrixData);
+                showNotification('addSuccess', 'Изменения сохранены', 'success');
+            } catch (error) {
+                console.error('Ошибка сохранения матрицы:', error);
+                showNotification('addSuccess', 'Ошибка сохранения изменений', 'error');
+            }
+        }
+
+        async function addNewUpdate() {
+            const updateName = prompt('Введите название нового обновления:');
+            if (!updateName || updateName.trim() === '') return;
+            
+            const trimmedName = updateName.trim();
+            
+            if (updateMatrixData.updates.includes(trimmedName)) {
+                showNotification('addSuccess', 'Такое обновление уже существует', 'warning');
+                return;
+            }
+            
+            updateMatrixData.updates.push(trimmedName);
+            updateMatrixData.statuses[trimmedName] = {};
+            
+            updateMatrixData.users.forEach(user => {
+                updateMatrixData.statuses[trimmedName][user] = 'not-ok';
+            });
+            
+            displayUpdateMatrix();
+            await saveMatrixChanges();
+            
+            showNotification('addSuccess', `Обновление "${trimmedName}" добавлено`, 'success');
+        }
+
+        async function editUpdateName(oldName) {
+            const newName = prompt('Введите новое название обновления:', oldName);
+            if (!newName || newName.trim() === '' || newName === oldName) return;
+            
+            const trimmedName = newName.trim();
+            
+            if (updateMatrixData.updates.includes(trimmedName) && trimmedName !== oldName) {
+                showNotification('addSuccess', 'Такое обновление уже существует', 'warning');
+                return;
+            }
+            
+            const index = updateMatrixData.updates.indexOf(oldName);
+            if (index !== -1) {
+                updateMatrixData.updates[index] = trimmedName;
+                
+                if (updateMatrixData.statuses[oldName]) {
+                    updateMatrixData.statuses[trimmedName] = updateMatrixData.statuses[oldName];
+                    delete updateMatrixData.statuses[oldName];
+                }
+                
+                displayUpdateMatrix();
+                await saveMatrixChanges();
+                
+                showNotification('addSuccess', `Обновление переименовано в "${trimmedName}"`, 'success');
+            }
+        }
+
+        async function deleteUpdate(updateName) {
+            if (!confirm(`Вы уверены, что хотите удалить обновление "${updateName}"?`)) return;
+            
+            const index = updateMatrixData.updates.indexOf(updateName);
+            if (index !== -1) {
+                updateMatrixData.updates.splice(index, 1);
+                delete updateMatrixData.statuses[updateName];
+                
+                displayUpdateMatrix();
+                await saveMatrixChanges();
+                
+                showNotification('addSuccess', `Обновление "${updateName}" удалено`, 'success');
+            }
+        }
+
+        async function exportMatrixToExcel() {
+            try {
+                const wb = XLSX.utils.book_new();
+                
+                const excelData = [];
+                
+                const headerRow = ['Обновление', ...updateMatrixData.users];
+                excelData.push(headerRow);
+                
+                updateMatrixData.updates.forEach(update => {
+                    const row = [update];
+                    updateMatrixData.users.forEach(user => {
+                        const status = updateMatrixData.statuses[update]?.[user] || 'not-ok';
+                        const statusText = {
+                            'ok': 'Готово',
+                            'not-ok': 'Не готово'
+                        }[status] || 'Не готово';
+                        row.push(statusText);
+                    });
+                    excelData.push(row);
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet(excelData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Статус обновлений');
+                
+                const colWidths = [
+                    { wch: 30 },
+                    ...updateMatrixData.users.map(() => ({ wch: 15 }))
+                ];
+                ws['!cols'] = colWidths;
+                
+                const currentDate = new Date().toISOString().split('T')[0];
+                const fileName = `status_updates_${currentDate}.xlsx`;
+                
+                XLSX.writeFile(wb, fileName);
+                
+                showNotification('addSuccess', 'Матрица успешно экспортирована в Excel!', 'success');
+            } catch (error) {
+                console.error('Ошибка экспорта матрицы:', error);
+                showNotification('addSuccess', 'Ошибка экспорта матрицы', 'error');
+            }
+        }
+
+        // =========== ФУНКЦИИ ДЛЯ СЕРВИСОВ ===========
+
+        function renderServices(category, gridId) {
+            const items = services[category];
+            const grid = document.getElementById(gridId);
+            if (!items || !grid) return;
+
+            grid.innerHTML = '';
+
+            items.forEach(service => {
+                const card = document.createElement('a');
+                card.href = service.url;
+                card.className = 'service-card';
+                card.target = '_blank';
+                card.rel = 'noopener';
+                card.innerHTML = `
+                    <img src="${service.img}" alt="${service.name}" onerror="this.src='./img/default.png'">
+                    <span>${service.name.replace(/<br>/g, ' ')}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function initServicesTabs() {
+            // Для пользовательской вкладки
+            const userServiceMenuItems = document.querySelectorAll('#servicesTab .services-menu-item');
+            userServiceMenuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    userServiceMenuItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    renderServices(this.dataset.serviceCategory, 'servicesGrid');
+                });
+            });
+
+            // Для административной вкладки
+            const adminServiceMenuItems = document.querySelectorAll('#adminServicesTab .services-menu-item');
+            adminServiceMenuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    adminServiceMenuItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    renderServices(this.dataset.serviceCategory, 'adminServicesGrid');
+                });
+            });
+
+            // Инициализация с категорией по умолчанию
+            renderServices('own', 'servicesGrid');
+            renderServices('own', 'adminServicesGrid');
+        }
+
+        // =========== ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ ===========
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkAuth();
+            initServicesTabs();
+
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                try {
+                    const result = await apiService.login(username, password);
+                    
+                    if (result.success) {
+                        localStorage.setItem('currentUser', JSON.stringify(result.user));
+                        currentUser = result.user;
+                        await showUserInterface(result.user);
+                        document.getElementById('loginError').classList.add('hidden');
+                    } else {
+                        document.getElementById('loginError').textContent = result.error || 'Ошибка входа';
+                        document.getElementById('loginError').classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Ошибка входа:', error);
+                    document.getElementById('loginError').textContent = 'Ошибка подключения к серверу';
+                    document.getElementById('loginError').classList.remove('hidden');
+                }
+            });
+
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                localStorage.removeItem('currentUser');
+                currentUser = null;
+                location.reload();
+            });
+
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    if (tabName === 'user-updates') {
+                        document.getElementById(tabName + 'Tab').classList.remove('hidden');
+                        loadUserUpdateMatrix();
+                    } else if (tabName === 'services') {
+                        document.getElementById('servicesTab').classList.remove('hidden');
+                        renderServices('own', 'servicesGrid');
+                    } else if (tabName === 'adminServices') {
+                        document.getElementById('adminServicesTab').classList.remove('hidden');
+                        renderServices('own', 'adminServicesGrid');
+                    } else {
+                        const tabElement = document.getElementById(tabName + 'Tab');
+                        if (tabElement) {
+                            tabElement.classList.remove('hidden');
+                        }
+                        
+                        if (tabName === 'view') {
+                            loadUserRecords(1);
+                        } else if (tabName === 'updates' && currentUser && currentUser.role === 'admin') {
+                            loadUpdateMatrix();
+                        }
+                    }
+                });
+            });
+
+            document.getElementById('addRecordForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const editId = this.getAttribute('data-edit-id');
+                const record = {
+                    connectionDate: document.getElementById('connectionDate').value,
+                    lpu: document.getElementById('lpu').value,
+                    workDescription: document.getElementById('workDescription').value,
+                    exitTime: document.getElementById('exitTime').value || null,
+                    userId: currentUser.id,
+                    source: 'manual'
+                };
+                
+                try {
+                    if (editId) {
+                        await apiService.updateRecord(editId, record);
+                        showNotification('addSuccess', 'Запись успешно обновлена!', 'success');
+                        this.removeAttribute('data-edit-id');
+                        this.querySelector('button[type="submit"]').textContent = 'Добавить запись';
+                        this.reset();
+                        document.getElementById('cancelEditBtn').classList.add('hidden');
+                    } else {
+                        await apiService.createRecord(record);
+                        showNotification('addSuccess', 'Запись успешно добавлена!', 'success');
+                        this.reset();
+                    }
+                    
+                    if (currentUser.role === 'admin') {
+                        await loadAdminRecords(currentAdminPage);
+                        await updateAdminStats();
+                    } else {
+                        await loadUserRecords(currentUserPage);
+                    }
+                } catch (error) {
+                    console.error('Ошибка сохранения:', error);
+                    showNotification('addSuccess', 'Ошибка сохранения записи', 'error');
+                }
+            });
+
+            document.getElementById('cancelEditBtn').addEventListener('click', function() {
+                document.getElementById('addRecordForm').removeAttribute('data-edit-id');
+                document.getElementById('addRecordForm').querySelector('button[type="submit"]').textContent = 'Добавить запись';
+                document.getElementById('addRecordForm').reset();
+                this.classList.add('hidden');
+                showNotification('addSuccess', 'Режим редактирования отменен', 'info');
+            });
+
+            document.getElementById('uploadLogBtn').addEventListener('click', async function() {
+                const fileInput = document.getElementById('logFile');
+                const file = fileInput.files[0];
+                const uploadBtn = this;
+                
+                if (!file) {
+                    showNotification('uploadError', 'Пожалуйста, выберите файл', 'error');
+                    return;
+                }
+                
+                try {
+                    uploadBtn.disabled = true;
+                    uploadBtn.classList.add('btn-loading');
+                    uploadBtn.innerHTML = '<span class="loading-spinner"></span> Обработка...';
+                    
+                    const fileContent = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = e => resolve(e.target.result);
+                        reader.onerror = e => reject(new Error('Ошибка чтения файла'));
+                        reader.readAsText(file);
+                    });
+                    
+                    const newRecords = await processLogData(fileContent);
+                    
+                    localStorage.setItem('pendingImport', JSON.stringify(newRecords));
+                    
+                    showLogPreview(newRecords);
+                    
+                    if (newRecords.length === 0) {
+                        showNotification('uploadSuccess', 'Нет новых RDP сессий для импорта', 'info');
+                    } else {
+                        showNotification('uploadSuccess', `Найдено ${newRecords.length} новых RDP сессий для импорта`, 'success');
+                    }
+                    
+                } catch (error) {
+                    console.error('Ошибка обработки файла:', error);
+                    showNotification('uploadError', 'Ошибка обработки файла: ' + error.message, 'error');
+                } finally {
+                    uploadBtn.disabled = false;
+                    uploadBtn.classList.remove('btn-loading');
+                    uploadBtn.innerHTML = 'Загрузить и обработать логи';
+                }
+            });
+
+            document.getElementById('confirmImportBtn').addEventListener('click', async function() {
+                const pendingImport = localStorage.getItem('pendingImport');
+                const uploadSuccess = document.getElementById('uploadSuccess');
+                const uploadError = document.getElementById('uploadError');
+                const confirmBtn = this;
+                
+                if (uploadSuccess) uploadSuccess.classList.add('hidden');
+                if (uploadError) uploadError.classList.add('hidden');
+                
+                if (!pendingImport) {
+                    showNotification('uploadError', 'Нет данных для импорта', 'error');
+                    return;
+                }
+                
+                try {
+                    const recordsToImport = JSON.parse(pendingImport);
+                    
+                    if (recordsToImport.length === 0) {
+                        showNotification('uploadError', 'Нет новых записей для импорта', 'error');
+                        return;
+                    }
+                    
+                    confirmBtn.disabled = true;
+                    confirmBtn.classList.add('btn-loading');
+                    confirmBtn.innerHTML = '<span class="loading-spinner"></span> Импорт...';
+                    
+                    await apiService.bulkCreateRecords(recordsToImport, currentUser.id);
+                    
+                    localStorage.removeItem('pendingImport');
+                    document.getElementById('logPreview').classList.add('hidden');
+                    document.getElementById('logFile').value = '';
+                    
+                    showNotification('uploadSuccess', `Успешно импортировано ${recordsToImport.length} записей`, 'success');
+                    
+                    if (currentUser.role === 'admin') {
+                        await loadAdminRecords(1);
+                        await updateAdminStats();
+                        await populateAdminFilters();
+                    } else {
+                        await loadUserRecords(1);
+                    }
+                } catch (error) {
+                    console.error('Ошибка импорта:', error);
+                    showNotification('uploadError', 'Ошибка импорта: ' + error.message, 'error');
+                } finally {
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('btn-loading');
+                    confirmBtn.innerHTML = 'Подтвердить импорт';
+                }
+            });
+
+            document.getElementById('userApplyFilters').addEventListener('click', applyUserFilters);
+            document.getElementById('userResetFilters').addEventListener('click', resetUserFilters);
+            document.getElementById('adminApplyFilters').addEventListener('click', applyAdminFilters);
+            document.getElementById('adminResetFilters').addEventListener('click', resetAdminFilters);
+            document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+            
+            document.getElementById('userPrevPage').addEventListener('click', goToUserPrevPage);
+            document.getElementById('userNextPage').addEventListener('click', goToUserNextPage);
+            document.getElementById('adminPrevPage').addEventListener('click', goToAdminPrevPage);
+            document.getElementById('adminNextPage').addEventListener('click', goToAdminNextPage);
+
+            if (document.getElementById('addUpdateBtn')) {
+                document.getElementById('addUpdateBtn').addEventListener('click', addNewUpdate);
+            }
+            if (document.getElementById('exportMatrixBtn')) {
+                document.getElementById('exportMatrixBtn').addEventListener('click', exportMatrixToExcel);
+            }
+        });
+    </script>
+</body>
+</html>
